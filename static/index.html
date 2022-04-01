@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <meta charset="UTF-8">
+        <title>下载页面</title>
+        <style type="text/css">
+            html,body{
+                margin:0;
+                height: 100%;
+                background-color:black;
+            }
+        </style>
+        <script>
+            function download_video() {
+                var httpRequest = new XMLHttpRequest();//第一步：创建需要的对象
+                url = document.getElementById("i_url").value
+                httpRequest.open('POST', '/download?url='+url, true); //第二步：打开连接
+                //httpRequest.setRequestHeader("Content-type","application/x-www-form-urlencoded");//设置请求头 注：post方式必须设置请求头（在建立连接后设置请求头）
+                httpRequest.setRequestHeader("Content-type","text/html");//设置请求头 注：post方式必须设置请求头（在建立连接后设置请求头）
+
+                //httpRequest.send('url='+url);//发送请求 将情头体写在send中
+                httpRequest.send();//发送请求 将情头体写在send中
+                /**
+                * 获取数据后的处理程序
+                */
+                httpRequest.onreadystatechange = function () {//请求后的回调接口，可将请求成功后要执行的程序写在其中
+                    if (httpRequest.readyState == 4 && httpRequest.status == 200) {//验证请求是否发送成功
+                        var json = httpRequest.responseText;//获取到服务端返回的数据
+                        console.log(json);
+                        var obj = JSON.parse(json)
+                        document.getElementById("req_ret").value = obj.detail
+                        console.log(obj.detail);
+                    }
+                };
+                //alert('url:'+url)
+            }
+            function show_status() {
+                url = document.getElementById("req_ret").value
+                alert("url:"+url)
+            }
+        </script>
+    </head>
+    <body>
+        <div style="height:30%;background-color:black;"></div>
+        <div style="text-align:center;margin:0 auto;background-color:black;color:white;">请输入下载地址:
+            <input id="i_url" style="width:200px;">
+            <button onclick="download_video()" style="width:100px;">下载</button>
+            <button onclick="show_status()" style="width:100px;">查询状态</button>
+        </div>
+
+        <div style="text-align:center;margin:0 auto;background-color:black;color:white;">
+            <textarea id="req_ret" readonly="readonly" style="width:50%;text-align:center;margin:0 auto;background-color:black;color:white;border:none;resize:none;"></textarea>
+        </div>
+    </body>
+</html>

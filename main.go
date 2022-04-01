@@ -22,6 +22,7 @@ import (
 
 	"github.com/PuerkitoBio/goquery"
 	"github.com/fatih/color"
+	"github.com/gin-gonic/gin"
 )
 
 // 简书m3u8格式解析讲解:https://www.jianshu.com/p/e97f6555a070
@@ -394,57 +395,66 @@ func downloadVideoDirect(url, filePath string) {
 	}
 	return
 }
-func main() {
-	for {
-		input := bufio.NewReader(os.Stdin)
-		color.Yellow("请输入要下载的地址或m3u8url:")
-		url, _, err := input.ReadLine()
+
+func onDownloadVideo(url string) {
+	title, m3u8URL := ExtractInfo(string(url))
+	//fmt.Println("")
+	filePath := fmt.Sprintf("%s/%s.mp4", conf.FilePath, string(title))
+	// 若是m3u8文件则按流程下载,其余文件直接下载
+	if strings.HasSuffix(string(m3u8URL), ".m3u8") || strings.HasSuffix(string(m3u8URL), ".M3U8") {
+		color.HiYellow("下载m3u8文件")
+		/*
+			有的m3u8文件有跳转，需要解析输入的m3u8文件再次下载新的m3u8文件,
+			如果不续跳转,则使用输入的url指向的m3u8文件进行解析
+		*/
+		m3u8Content, baseURL, isRedirect, err := downloadM3u8File(string(m3u8URL))
+		if !isRedirect {
+			baseURL = string(m3u8URL)
+			index := strings.LastIndex(baseURL, "/")
+			if index != -1 {
+				baseURL = baseURL[:index+1]
+			}
+			color.HiBlue("new baseURL:", baseURL)
+
+		}
 		if err != nil {
-			color.Red("读取输入的URL失败...")
+			color.Red("downloadM3u8File error:", err.Error())
 			return
 		}
-		title, m3u8URL := ExtractInfo(string(url))
-		//fmt.Println("")
-		filePath := fmt.Sprintf("%s/%s.mp4", conf.FilePath, string(title))
-		// 若是m3u8文件则按流程下载,其余文件直接下载
-		if strings.HasSuffix(string(m3u8URL), ".m3u8") || strings.HasSuffix(string(m3u8URL), ".M3U8") {
-			color.HiYellow("下载m3u8文件")
-			/*
-				有的m3u8文件有跳转，需要解析输入的m3u8文件再次下载新的m3u8文件,
-				如果不续跳转,则使用输入的url指向的m3u8文件进行解析
-			*/
-			m3u8Content, baseURL, isRedirect, err := downloadM3u8File(string(m3u8URL))
-			if !isRedirect {
-				baseURL = string(m3u8URL)
-				index := strings.LastIndex(baseURL, "/")
-				if index != -1 {
-					baseURL = baseURL[:index+1]
-				}
-				color.HiBlue("new baseURL:", baseURL)
-
-			}
-			if err != nil {
-				color.Red("downloadM3u8File error:", err.Error())
-				return
-			}
-			color.HiYellow("解析m3u8文件")
-			fileNames, totalTime, key := ParseM3u8File(m3u8Content)
-			//fmt.Printf("m3u8Content:%v\n", m3u8Content)
-			//fmt.Println("fileName:", fileNames)
-			//fmt.Printf("fileNames:%v\n key:%v\n", fileNames, key)
-			color.HiYellow("下载视频文件")
-			beginTime := time.Now()
-			seconds := int64(totalTime)
-			color.Green("开始下载时间:%s 视频总时间:%02dh%02dm%02ds [*表示ts文件加密,█表示ts文件未加密]:\n", time.Now().Format("2006-01-02 15:04:05"), seconds/3600, seconds/60, seconds%60)
-			downloadVideo(beginTime, false, baseURL, key, filePath, fileNames)
-			color.Red("结束下载时间:%s\n文件下载路径:%s\n共使用时间:%s:\n", time.Now().Format("2006-01-02 15:04:05"), filePath, time.Since(beginTime).String())
-		} else {
-			color.HiYellow("直接下载视频文件")
-			beginTime := time.Now()
-			color.Green("开始下载时间:%s[*表示ts文件加密,█表示ts文件未加密]:\n", time.Now().Format("2006-01-02 15:04:05"))
-			downloadVideoDirect(string(m3u8URL), filePath)
-			color.Red("结束下载时间:%s\n文件下载路径:%s\n共使用时间:%s:\n", time.Now().Format("2006-01-02 15:04:05"), filePath, time.Since(beginTime).String())
-		}
+		color.HiYellow("解析m3u8文件")
+		fileNames, totalTime, key := ParseM3u8File(m3u8Content)
+		//fmt.Printf("m3u8Content:%v\n", m3u8Content)
+		//fmt.Println("fileName:", fileNames)
+		//fmt.Printf("fileNames:%v\n key:%v\n", fileNames, key)
+		color.HiYellow("下载视频文件")
+		beginTime := time.Now()
+		seconds := int64(totalTime)
+		color.Green("开始下载时间:%s 视频总时间:%02dh%02dm%02ds [*表示ts文件加密,█表示ts文件未加密]:\n", time.Now().Format("2006-01-02 15:04:05"), seconds/3600, seconds/60%60, seconds%60)
+		downloadVideo(beginTime, false, baseURL, key, filePath, fileNames)
+		color.Red("结束下载时间:%s\n文件下载路径:%s\n共使用时间:%s:\n", time.Now().Format("2006-01-02 15:04:05"), filePath, time.Since(beginTime).String())
+	} else {
+		color.HiYellow("直接下载视频文件")
+		beginTime := time.Now()
+		color.Green("开始下载时间:%s[*表示ts文件加密,█表示ts文件未加密]:\n", time.Now().Format("2006-01-02 15:04:05"))
+		downloadVideoDirect(string(m3u8URL), filePath)
+		color.Red("结束下载时间:%s\n文件下载路径:%s\n共使用时间:%s:\n", time.Now().Format("2006-01-02 15:04:05"), filePath, time.Since(beginTime).String())
 	}
-	fmt.Println("over!")
+}
+
+func main() {
+	router := gin.Default()
+	router.StaticFile("/", "./static/index.html")
+	router.POST("/download", func(c *gin.Context) {
+		fmt.Println(c.FullPath())
+		url := c.Query("url")
+		go func(url string) {
+			onDownloadVideo(url)
+		}(url)
+		url = fmt.Sprintf("正在处理下载任务,网址:%s\n", url)
+		c.JSON(200, gin.H{
+			"msg":    "Success",
+			"detail": url,
+		})
+	})
+	router.Run("127.0.0.1:5277")
 }
