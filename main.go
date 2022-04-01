@@ -18,7 +18,7 @@ import (
 	"strings"
 	"time"
 
-	"jieav/progress"
+	"dvideo/progress"
 
 	"github.com/PuerkitoBio/goquery"
 	"github.com/fatih/color"
