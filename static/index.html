@@ -9,6 +9,52 @@
                 height: 100%;
                 background-color:black;
             }
+
+            .ant-btn {
+                line-height: 1.499;
+                position: relative;
+                display: inline-block;
+                font-weight: 400;
+                white-space: nowrap;
+                text-align: center;
+                background-image: none;
+                border: 1px solid transparent;
+                -webkit-box-shadow: 0 2px 0 rgba(0,0,0,0.015);
+                box-shadow: 0 2px 0 rgba(0,0,0,0.015);
+                cursor: pointer;
+                -webkit-transition: all .3s cubic-bezier(.645, .045, .355, 1);
+                transition: all .3s cubic-bezier(.645, .045, .355, 1);
+                -webkit-user-select: none;
+                -moz-user-select: none;
+                -ms-user-select: none;
+                user-select: none;
+                -ms-touch-action: manipulation;
+                touch-action: manipulation;
+                height: 25px;
+                padding: 0 15px;
+                font-size: 14px;
+                border-radius: 4px;
+                color: rgba(0,0,0,0.65);
+                background-color: #fff;
+                border-color: #d9d9d9;
+            }
+
+            .ant-btn-primary {
+                color: #fff;
+                background-color: #18ff8b;
+                border-color: hsl(172, 100%, 55%);
+                text-shadow: 0 -1px 0 rgba(0,0,0,0.12);
+                -webkit-box-shadow: 0 2px 0 rgba(0,0,0,0.045);
+                box-shadow: 0 2px 0 rgba(0,0,0,0.045);
+            }
+            .ant-btn-red {
+                color: #fff;
+                background-color: hwb(187 26% 0%);
+                border-color: hwb(147 26% 0%);
+                text-shadow: 0 -1px 0 rgba(0,0,0,0.12);
+                -webkit-box-shadow: 0 2px 0 rgba(0,0,0,0.045);
+                box-shadow: 0 2px 0 rgba(0,0,0,0.045);
+            }
         </style>
         <script>
             function download_video() {
@@ -36,16 +82,18 @@
             }
             function show_status() {
                 url = document.getElementById("req_ret").value
-                alert("url:"+url)
+                //alert("url:"+url)
             }
         </script>
     </head>
     <body>
-        <div style="height:30%;background-color:black;"></div>
+        <div style="text-align:center;height:40%;background-color:black;">
+            <img src="/imgs/logo.png" style="position: relative;top:150px;">
+        </div>
         <div style="text-align:center;margin:0 auto;background-color:black;color:white;">请输入下载地址:
             <input id="i_url" style="width:200px;">
-            <button onclick="download_video()" style="width:100px;">下载</button>
-            <button onclick="show_status()" style="width:100px;">查询状态</button>
+            <button onclick="download_video()" class="ant-btn ant-btn-red">下载</button>
+            <button onclick="show_status()" class="ant-btn ant-btn-red">查询状态</button>
         </div>
 
         <div style="text-align:center;margin:0 auto;background-color:black;color:white;">

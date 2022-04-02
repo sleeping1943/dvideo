@@ -444,6 +444,7 @@ func onDownloadVideo(url string) {
 func main() {
 	router := gin.Default()
 	router.StaticFile("/", "./static/index.html")
+	router.StaticFS("imgs", http.Dir("./imgs"))
 	router.POST("/download", func(c *gin.Context) {
 		fmt.Println(c.FullPath())
 		url := c.Query("url")
@@ -456,5 +457,5 @@ func main() {
 			"detail": url,
 		})
 	})
-	router.Run("127.0.0.1:5277")
+	router.Run(":5277")
 }
