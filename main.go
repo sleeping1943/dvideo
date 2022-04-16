@@ -14,6 +14,7 @@ import (
 	"net/http"
 	"os"
 	"regexp"
+	"sort"
 	"strconv"
 	"strings"
 	"time"
@@ -48,6 +49,21 @@ type FileNameInfo struct {
 	URL  string
 }
 
+// StatesList 下载状态信息slice
+type StatesList []VideoInfo
+
+func (sl StatesList) Len() int {
+	return len(sl)
+}
+
+func (sl StatesList) Swap(i, j int) {
+	sl[i], sl[j] = sl[j], sl[i]
+}
+
+func (sl StatesList) Less(i, j int) bool {
+	return sl[i].Name <= sl[j].Name
+}
+
 var conf JSONConf
 var state chan VideoInfo
 var states map[string]VideoInfo
@@ -63,7 +79,11 @@ func DownloadState() {
 		select {
 		case w := <-state:
 			//fmt.Printf("%v\n", w)
-			states[w.Name] = w
+			if w.CurrentIndex == w.TotalCount-1 {
+				delete(states, w.Name)
+			} else {
+				states[w.Name] = w
+			}
 		case fileNameInfo := <-cfileName:
 			fileNames[fileNameInfo.URL] = fileNameInfo
 			cfileName2 <- struct{}{}
@@ -530,10 +550,11 @@ func main() {
 		//		"detail": "other",
 		//	})
 		//} else {
-		var statesList []VideoInfo
+		var statesList StatesList
 		for _, value := range states {
 			statesList = append(statesList, value)
 		}
+		sort.Sort(statesList)
 		c.JSON(200, gin.H{
 			"code":   200,
 			"msg":    "Success",
