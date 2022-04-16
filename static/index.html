@@ -57,9 +57,11 @@
             }
         </style>
         <script>
+            var timer
             function download_video() {
                 var httpRequest = new XMLHttpRequest();//第一步：创建需要的对象
                 url = document.getElementById("i_url").value
+                document.getElementById("i_url").value = ""
                 httpRequest.open('POST', '/download?url='+url, true); //第二步：打开连接
                 //httpRequest.setRequestHeader("Content-type","application/x-www-form-urlencoded");//设置请求头 注：post方式必须设置请求头（在建立连接后设置请求头）
                 httpRequest.setRequestHeader("Content-type","text/html");//设置请求头 注：post方式必须设置请求头（在建立连接后设置请求头）
@@ -80,8 +82,44 @@
                 };
                 //alert('url:'+url)
             }
+            function change_timer_state() {
+                console.log(typeof(timer))
+                if (timer != null) {
+                    clearInterval(timer)
+                    timer = null
+                } else {
+                    timer = setInterval(show_status, 1000)
+                }
+            }
             function show_status() {
-                url = document.getElementById("req_ret").value
+                var httpRequest = new XMLHttpRequest();//第一步：创建需要的对象
+                url = document.getElementById("i_url").value
+                httpRequest.open('GET', '/status', true); //第二步：打开连接
+                //httpRequest.setRequestHeader("Content-type","application/x-www-form-urlencoded");//设置请求头 注：post方式必须设置请求头（在建立连接后设置请求头）
+                httpRequest.setRequestHeader("Content-type","text/html");//设置请求头 注：post方式必须设置请求头（在建立连接后设置请求头）
+
+                //httpRequest.send('url='+url);//发送请求 将情头体写在send中
+                httpRequest.send();//发送请求 将情头体写在send中
+                /**
+                * 获取数据后的处理程序
+                */
+                httpRequest.onreadystatechange = function () {//请求后的回调接口，可将请求成功后要执行的程序写在其中
+                    if (httpRequest.readyState == 4 && httpRequest.status == 200) {//验证请求是否发送成功
+                        var json = httpRequest.responseText;//获取到服务端返回的数据
+                        console.log(json);
+                        var states = JSON.parse(json)
+                        var retStr = ""
+                        for (var index in states.detail) {
+                            console.log("info")
+                            var info = states.detail[index]
+                            console.log(info)
+                            retStr += info.name + ":" + info.currentIndex + "/" +  info.totalCount + "\n"
+                        }
+                        document.getElementById("req_ret").value = retStr
+                        console.log(states.detail);
+                    }
+                };
+                //url = document.getElementById("req_ret").value
                 //alert("url:"+url)
             }
         </script>
@@ -93,7 +131,7 @@
         <div style="text-align:center;margin:0 auto;background-color:black;color:white;">请输入下载地址:
             <input id="i_url" style="width:200px;">
             <button onclick="download_video()" class="ant-btn ant-btn-red">下载</button>
-            <button onclick="show_status()" class="ant-btn ant-btn-red">查询状态</button>
+            <button onclick="change_timer_state()" class="ant-btn ant-btn-red">查询状态</button>
         </div>
 
         <div style="text-align:center;margin:0 auto;background-color:black;color:white;">

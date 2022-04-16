@@ -32,7 +32,47 @@ type JSONConf struct {
 	FilePath string `json:"filePath"`
 }
 
+// VideoInfo 视频信息
+type VideoInfo struct {
+	TotalCount   int64  `json:"totalCount"`
+	CurrentIndex int64  `json:"currentIndex"`
+	Name         string `json:"name"`
+	URL          string `json:"url"`
+	TotalSize    int64  `json:"totalSize"`
+	EncryptFlag  bool   `json:"EncryptFlag"`
+}
+
+// FileNameInfo 文件标题信息
+type FileNameInfo struct {
+	Name string
+	URL  string
+}
+
 var conf JSONConf
+var state chan VideoInfo
+var states map[string]VideoInfo
+
+var cfileName chan FileNameInfo
+var fileNames map[string]FileNameInfo
+
+var cfileName2 chan struct{}
+
+// DownloadState 实时显示下载进度
+func DownloadState() {
+	for {
+		select {
+		case w := <-state:
+			//fmt.Printf("%v\n", w)
+			states[w.Name] = w
+		case fileNameInfo := <-cfileName:
+			fileNames[fileNameInfo.URL] = fileNameInfo
+			cfileName2 <- struct{}{}
+		default:
+			time.Sleep(time.Duration(500 * time.Millisecond))
+			//fmt.Println("waiting for chan...")
+		}
+	}
+}
 
 func init() {
 	f, err := os.Open("./conf/conf.json")
@@ -309,7 +349,7 @@ func DecryTsFile(key, content string) (string, error) {
 }
 
 // 下载单个视频
-func downloadVideo(beginTime time.Time, isDownloadTmpTsFile bool, baseURL, key, filePath string, fileNames []string) {
+func downloadVideo(beginTime time.Time, isDownloadTmpTsFile bool, baseURL, key, title, filePath string, fileNames []string) {
 	var contents [][]byte
 	totalCount := len(fileNames)
 	if len(key) > 0 {
@@ -331,18 +371,37 @@ func downloadVideo(beginTime time.Time, isDownloadTmpTsFile bool, baseURL, key, 
 	}
 	var downloadBar progress.Bar
 	var barGraph = "█"
+	var encryptFlag = false
 	if len(key) > 0 {
 		barGraph = "*"
+		encryptFlag = true
 	}
 	downloadBar.NewOptionWithGraph(0, int64(totalCount), barGraph)
+	// 开始下载之前存入一个，不然1个都没下载成功时，查询为null
+	state <- VideoInfo{
+		Name:         title,
+		URL:          "",
+		TotalCount:   int64(totalCount),
+		CurrentIndex: int64(0),
+		EncryptFlag:  encryptFlag,
+	}
 	for index, fileName := range fileNames {
-		downloadBar.Play(int64(index+1), beginTime)
+		//downloadBar.Play(int64(index+1), beginTime)
 		byteContent, err := DownloadTsFile(isDownloadTmpTsFile, baseURL, fileName)
 		//fmt.Println("共", totalCount, "个ts文件 现在下载到第", index+1, "个")
 		if err != nil {
 			fmt.Println("DownloadTsFile error:", err.Error())
 			return
 		}
+		//fmt.Println("\nBefore state<-...")
+		state <- VideoInfo{
+			Name:         title,
+			URL:          baseURL + fileName,
+			TotalCount:   int64(totalCount),
+			CurrentIndex: int64(index),
+			EncryptFlag:  encryptFlag,
+		}
+		//fmt.Println("After state<-...")
 		stringContent := string(byteContent)
 		if len(key) > 0 {
 			stringContent, err = DecryTsFile(key, string(byteContent))
@@ -398,6 +457,10 @@ func downloadVideoDirect(url, filePath string) {
 
 func onDownloadVideo(url string) {
 	title, m3u8URL := ExtractInfo(string(url))
+	cfileName <- FileNameInfo{
+		URL:  url,
+		Name: title,
+	}
 	//fmt.Println("")
 	filePath := fmt.Sprintf("%s/%s.mp4", conf.FilePath, string(title))
 	// 若是m3u8文件则按流程下载,其余文件直接下载
@@ -430,7 +493,7 @@ func onDownloadVideo(url string) {
 		beginTime := time.Now()
 		seconds := int64(totalTime)
 		color.Green("开始下载时间:%s 视频总时间:%02dh%02dm%02ds [*表示ts文件加密,█表示ts文件未加密]:\n", time.Now().Format("2006-01-02 15:04:05"), seconds/3600, seconds/60%60, seconds%60)
-		downloadVideo(beginTime, false, baseURL, key, filePath, fileNames)
+		downloadVideo(beginTime, false, baseURL, key, title, filePath, fileNames)
 		color.Red("结束下载时间:%s\n文件下载路径:%s\n共使用时间:%s:\n", time.Now().Format("2006-01-02 15:04:05"), filePath, time.Since(beginTime).String())
 	} else {
 		color.HiYellow("直接下载视频文件")
@@ -451,11 +514,39 @@ func main() {
 		go func(url string) {
 			onDownloadVideo(url)
 		}(url)
-		url = fmt.Sprintf("正在处理下载任务,网址:%s\n", url)
+		<-cfileName2
+		url = fmt.Sprintf("正在下载%s,网址:%s\n", fileNames[url].Name, url)
 		c.JSON(200, gin.H{
 			"msg":    "Success",
 			"detail": url,
 		})
 	})
+	router.GET("/status", func(c *gin.Context) {
+		//retBytes, err := json.Marshal(states)
+		//if err != nil {
+		//	c.JSON(502, gin.H{
+		//		"code":   502,
+		//		"msg":    "ERROR",
+		//		"detail": "other",
+		//	})
+		//} else {
+		var statesList []VideoInfo
+		for _, value := range states {
+			statesList = append(statesList, value)
+		}
+		c.JSON(200, gin.H{
+			"code":   200,
+			"msg":    "Success",
+			"detail": statesList,
+		})
+		//}
+	})
+	state = make(chan VideoInfo)
+	states = make(map[string]VideoInfo)
+
+	cfileName = make(chan FileNameInfo)
+	cfileName2 = make(chan struct{})
+	fileNames = make(map[string]FileNameInfo)
+	go DownloadState()
 	router.Run(":5277")
 }
