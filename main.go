@@ -5,6 +5,7 @@ import (
 	"bytes"
 	"crypto/aes"
 	"crypto/cipher"
+	"encoding/base64"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -41,6 +42,7 @@ type VideoInfo struct {
 	URL          string `json:"url"`
 	TotalSize    int64  `json:"totalSize"`
 	EncryptFlag  bool   `json:"EncryptFlag"`
+	Syn          string `json:"Syn"`
 }
 
 // FileNameInfo 文件标题信息
@@ -404,6 +406,7 @@ func downloadVideo(beginTime time.Time, isDownloadTmpTsFile bool, baseURL, key, 
 		TotalCount:   int64(totalCount),
 		CurrentIndex: int64(0),
 		EncryptFlag:  encryptFlag,
+		Syn:          base64.StdEncoding.EncodeToString([]byte(title)),
 	}
 	for index, fileName := range fileNames {
 		//downloadBar.Play(int64(index+1), beginTime)
@@ -420,6 +423,7 @@ func downloadVideo(beginTime time.Time, isDownloadTmpTsFile bool, baseURL, key, 
 			TotalCount:   int64(totalCount),
 			CurrentIndex: int64(index),
 			EncryptFlag:  encryptFlag,
+			Syn:          base64.StdEncoding.EncodeToString([]byte(title)),
 		}
 		//fmt.Println("After state<-...")
 		stringContent := string(byteContent)

@@ -55,9 +55,31 @@
                 -webkit-box-shadow: 0 2px 0 rgba(0,0,0,0.045);
                 box-shadow: 0 2px 0 rgba(0,0,0,0.045);
             }
+
+            .barfirst {
+                position: relative;
+                width: 100%;
+                height: 30px;
+                background-color: rgb(135, 139, 139);
+            }
+
+            .barsecond {
+                position: absolute;
+                width: 10%;
+                height: 100%;
+                background-color: rgb(22, 236, 86);
+            }
+
+            .barthird {
+                position:absolute;
+                text-align: center;
+                line-height: 30px;
+                color: rgb(12, 1, 9);
+            }
         </style>
         <script>
             var timer
+            var width = 1
             function download_video() {
                 var httpRequest = new XMLHttpRequest();//第一步：创建需要的对象
                 url = document.getElementById("i_url").value
@@ -84,11 +106,24 @@
             }
             function change_timer_state() {
                 console.log(typeof(timer))
+                progress = document.getElementById("progress")
+                btn = document.getElementById("taggle_state")
                 if (timer != null) {
                     clearInterval(timer)
                     timer = null
+                    btn.innerHTML = "显示状态"
+
+                    document.getElementById("req_ret").value = ""
+                    var children = progress.childNodes;
+                    console.log(children)
+                    console.log(children.length)
+                    // 注意:这里删除节点一点要倒序删除,正序删除时，后面的index会填充前面的，如:删除0节点后，1节点会成为0节点，导致删除不干净
+                    for (var i = children.length-1; i >=0; --i) {
+                        progress.removeChild(children[i])
+                    }
                 } else {
                     timer = setInterval(show_status, 1000)
+                    btn.innerHTML = "隐藏状态"
                 }
             }
             function show_status() {
@@ -114,6 +149,8 @@
                             var info = states.detail[index]
                             console.log(info)
                             retStr += info.name + ":" + info.currentIndex + "/" +  info.totalCount + "\n"
+                            update_bar(info.Syn, info.name, info.currentIndex, info.totalCount)
+                            console.log("Syn:"+info.Syn)
                         }
                         document.getElementById("req_ret").value = retStr
                         console.log(states.detail);
@@ -121,6 +158,45 @@
                 };
                 //url = document.getElementById("req_ret").value
                 //alert("url:"+url)
+            }
+            
+            function update_bar(syn, name, currentIndex, totalCount) {
+                progress = document.getElementById("progress")
+                mp_id = "mp"+syn
+                myProgress = document.getElementById(mp_id)
+                if (myProgress == null) {
+                    console.log("myProgress is null")
+                    myProgress = document.createElement("div")
+                    myProgress.className = "barfirst"
+                    myProgress.id = mp_id
+                }
+                mb_id = "mb"+syn
+                myBar = document.getElementById(mb_id)
+                if (myBar == null) {
+                    console.log("myBar is null")
+                    myBar = document.createElement("div");
+                    myBar.className = "barsecond"
+                    myBar.id = mb_id
+                }
+                myProgress.appendChild(myBar)
+                title_id = "title"+syn
+                title = document.getElementById(title_id)
+                if (title == null) {
+                    title = document.createElement("div")
+                    title.id = title_id
+                    title.style.color = "white"
+                }
+                if (currentIndex >= totalCount-1) {
+                    percent = 1.00
+                } else {
+                    percent = (currentIndex+1)/totalCount * 100
+                }
+                percent = percent.toFixed(2)
+                title.innerHTML =  name + ":" + percent + '%'
+                progress.appendChild(title)
+                //myBar.appendChild(info)
+                progress.appendChild(myProgress)
+                myBar.style.width = percent + '%'
             }
         </script>
     </head>
@@ -131,11 +207,16 @@
         <div style="text-align:center;margin:0 auto;background-color:black;color:white;">请输入下载地址:
             <input id="i_url" style="width:200px;">
             <button onclick="download_video()" class="ant-btn ant-btn-red">下载</button>
-            <button onclick="change_timer_state()" class="ant-btn ant-btn-red">查询状态</button>
+            <button id="taggle_state" onclick="change_timer_state()" class="ant-btn ant-btn-red">显示状态</button>
+            <!--
+                <button onclick="test_bar()" class="ant-btn ant-btn-red">进度条</button>
+            -->
         </div>
 
         <div style="text-align:center;margin:0 auto;background-color:black;color:white;">
-            <textarea id="req_ret" readonly="readonly" style="width:50%;height:400px;text-align:center;margin:0 auto;background-color:black;color:white;border:none;resize:none;"></textarea>
+            <textarea id="req_ret" readonly="readonly" style="width:50%;height:200px;text-align:center;margin:0 auto;background-color:black;color:white;border:none;resize:none;"></textarea>
         </div>
+    <div id="progress">
+    </div>
     </body>
 </html>
